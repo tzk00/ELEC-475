@@ -4,6 +4,8 @@ import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
+from surprise import Reader, Dataset, SVD
+from surprise.model_selection import cross_validate
 
 # Importing dataset
 file_path = 'NetflixRatings.csv'
@@ -117,7 +119,7 @@ def get_recommendations(title, cosine_sim=cosine_sim):
     return df3['title'].iloc[movie_indices]
 
 # Get recommendation
-get_recommendations('stuart little 2')
+print(get_recommendations('stuart little 2'))
 
 ######## Feature-based Model (Training model using movie description , cast, genre and director ) ########
 
@@ -220,4 +222,32 @@ cosine_sim2 = cosine_similarity(count_matrix, count_matrix)
 df3 = df3.reset_index()
 indices = pd.Series(df3.index, index=df3['title'])
 
-get_recommendations('stuart little 2', cosine_sim2)
+print(get_recommendations('stuart little 2', cosine_sim2))
+
+######## Customer-rating-based Recommendation ########
+# Define the Reader object
+reader = Reader(rating_scale=(1, 5))  # Define your rating scale if it's different
+
+# Import data
+ratings = pd.read_csv('Rating_small.csv')
+
+# Load the data into a Surprise dataset
+data = Dataset.load_from_df(ratings[['CustomerID', 'Title', 'Customer Rating']], reader)
+
+# Define the SVD model
+model = SVD()
+
+# Perform cross-validation to evaluate the model
+results = cross_validate(model, data, measures=['RMSE', 'MAE'], cv=5, verbose=True)
+
+# Print the average RMSE and MAE
+print("Average RMSE:", results['test_rmse'].mean())
+print("Average MAE:", results['test_mae'].mean())
+
+# Build the full training set
+trainset = data.build_full_trainset()
+
+# Fit the model to the full training set
+model.fit(trainset)
+
+ratings[ratings['CustomerID'] == 295828]
